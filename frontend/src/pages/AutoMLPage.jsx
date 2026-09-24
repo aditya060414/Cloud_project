@@ -71,7 +71,14 @@ export default function AutoMLPage({
       showToast(`AutoML completed! Champion Model: ${result.best_model_name} (${(result.best_score * 100).toFixed(1)}%)`, 'success');
       await onTrainingComplete();
     } catch (err) {
-      const errDetail = err.response?.data?.detail || 'AutoML training failed';
+      let errDetail = err.response?.data?.detail;
+      if (!errDetail) {
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          errDetail = 'Client request timed out. Training on datasets with many unique classes takes longer; check the backend terminal.';
+        } else {
+          errDetail = err.message || 'AutoML training failed';
+        }
+      }
       setLiveLogs((prev) => `${prev}\n\n[ERROR] ${errDetail}`);
       showToast(errDetail, 'error');
     } finally {

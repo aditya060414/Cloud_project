@@ -35,6 +35,13 @@ backend/mlops.db
 mlflow.db
 mlflow_runs/
 
+# Runtime Generated Models & Uploaded Datasets
+backend/models/model_random_forest_*.joblib
+backend/models/model_support_vector_machine_*.joblib
+backend/models/model_gradient_boosting_*.joblib
+backend/artifacts/0_*
+backend/datasets/0_*
+
 # Node.js
 frontend/node_modules/
 frontend/dist/

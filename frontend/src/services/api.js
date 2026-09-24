@@ -39,7 +39,7 @@ export const MLOpsAPI = {
 
   // AutoML Training
   startTraining: async (config) => {
-    const res = await api.post('/training/start', config);
+    const res = await api.post('/training/start', config, { timeout: 300000 });
     return res.data;
   },
 
@@ -54,7 +54,7 @@ export const MLOpsAPI = {
   },
 
   triggerRetraining: async (metric = 'f1') => {
-    const res = await api.post('/training/retrain', null, { params: { metric } });
+    const res = await api.post('/training/retrain', null, { params: { metric }, timeout: 300000 });
     return res.data;
   },
 

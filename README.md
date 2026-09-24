@@ -1,4 +1,4 @@
-# Cloud-Based MLOps Platform (Local Demonstration)
+# Cloud-Based MLOps Platform
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
@@ -10,24 +10,55 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg?logo=docker&logoColor=white)](https://docker.com)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Manifests%20%26%20HPA-326CE5.svg?logo=kubernetes&logoColor=white)](https://kubernetes.io)
 
+**GitHub Repository:** [https://github.com/aditya060414/Cloud_project](https://github.com/aditya060414/Cloud_project)
+
 ---
 
 ## 1. Project Overview
 
-The **Cloud-Based MLOps Platform** is a local demonstration of an enterprise-grade cloud Machine Learning Operations (MLOps) architecture designed for university mini projects, capstone reviews, and viva examinations. 
+The **Cloud-Based MLOps Platform** is an enterprise-grade Machine Learning Operations (MLOps) architecture designed for academic capstones, viva reviews, and production demonstrations. 
 
-It demonstrates the complete machine learning lifecycle with zero paid cloud dependencies (no AWS, GCP, or Azure bills required). Everything runs on your local machine using Docker Compose or directly on native host environments.
+It provides an interactive, full-stack demonstration of the complete machine learning lifecycle with **zero paid cloud bills** (no AWS, GCP, or Azure costs required). Everything runs on your local machine using Docker Compose or directly on native host environments with automatic SQLite fallback.
 
 ```
-Dataset Upload ──► Data Validation & Cleaning ──► AutoML Training ──► Model Leaderboard Comparison
-                                                                               │
-                                                                               ▼
-Retraining Loop ◄── Data Drift Alert ◄── Live Monitoring ◄── REST Deployment ◄── Model Registry
+Dataset Ingestion ──► Automated Cleaning ──► AutoML Tuning (Optuna) ──► Model Leaderboard
+                                                                                │
+                                                                                ▼
+Automated Retrain ◄── Data Drift Alert ◄── Real-Time Metrics ◄── REST Inference ◄── Model Registry
 ```
 
 ---
 
 ## 2. Architecture & Design
+
+```mermaid
+graph TD
+    User([Web Browser]) -->|Port 3000| Frontend[React 18 + Vite Dashboard]
+    Frontend -->|REST API Port 8000| Backend[FastAPI Gateway]
+    
+    subgraph Core Services
+        Backend --> DP[Data Processor Service]
+        Backend --> AutoML[AutoML & Optuna Engine]
+        Backend --> Reg[Model Registry Service]
+        Backend --> Inf[In-Memory Inference Engine]
+        Backend --> Drift[PSI Drift Detector]
+    end
+
+    subgraph Data & Storage
+        DP --> DB[(PostgreSQL 15 / SQLite Fallback)]
+        Reg --> DB
+        Inf --> DB
+        AutoML --> MLflow[MLflow Server Port 5000]
+        AutoML --> Storage[(Model Artifacts .joblib)]
+    end
+
+    subgraph Telemetry
+        Backend -->|/metrics| Prom[Prometheus Port 9090]
+        Prom --> Grafana[Grafana Dashboard Port 3001]
+    end
+
+    Drift -.->|Retrain Trigger| AutoML
+```
 
 ```
                                  [ Web Browser ]
@@ -74,278 +105,185 @@ Retraining Loop ◄── Data Drift Alert ◄── Live Monitoring ◄── R
 
 ## 3. Key Features
 
-- **Automated Data Profiling**: CSV upload, data type detection, duplicate detection, and null profiling.
-- **Smart Data Cleaning**: Imputes missing numerical features with median, categorical features with mode, clips IQR outliers, and builds serializable preprocessing pipelines.
-- **Real AutoML Engine**: Evaluates 5 candidate algorithms:
+- **Automated Data Profiling**: CSV inspection, data type detection, duplicate identification, and null value profiling.
+- **Smart Data Cleaning**: Imputes missing continuous features with column **median**, categorical features with **mode**, clips **IQR outliers**, and saves fitted preprocessing pipelines (`.joblib`).
+- **Autonomous Machine Learning (AutoML)**: Evaluates 5 candidate classifiers:
   1. *Random Forest Classifier*
   2. *Gradient Boosting Classifier*
   3. *Logistic Regression*
   4. *Support Vector Machine (SVM)*
   5. *K-Nearest Neighbors (KNN)*
-- **Optuna Hyperparameter Tuning**: Optimizes hyperparameters per algorithm to maximize your selected metric (F1-Score, Accuracy, Precision, or Recall).
-- **Comparative Model Leaderboard**: Multi-model metrics bar chart, sorting by performance, and hyperparameter inspection.
-- **Model Registry & Governance**: Versioning (`v1`, `v2`, ...), deployment stages (`STAGING`, `PRODUCTION`, `ARCHIVED`), instant rollbacks, and `.joblib` artifact downloads.
-- **Low-Latency REST Inference**: Active model loaded in memory for sub-10ms predictions via `POST /predict`.
+- **Optuna Hyperparameter Tuning**: Bayesian optimization per algorithm to maximize chosen metric ($\text{F}_1$-Score, Accuracy, Precision, Recall).
+- **Comparative Model Leaderboard**: Multi-model performance comparison bar charts, automatic champion model selection, and hyperparameter inspection.
+- **Model Registry & Governance**: Semantic versioning (`v1`, `v2`, ...), environment stages (`STAGING`, `PRODUCTION`, `ARCHIVED`), instant zero-downtime rollbacks, and `.joblib` model artifact downloads.
+- **Low-Latency In-Memory Inference**: Production model is pre-warmed in memory for sub-5ms predictions via `POST /predict`.
 - **Real Population Stability Index (PSI) Drift Detection**:
-  $$\text{PSI} = \sum \left( \text{Actual}\% - \text{Expected}\% \right) \times \ln\left( \frac{\text{Actual}\%}{\text{Expected}\%} \right)$$
-  - $\text{PSI} < 0.10$: Normal
-  - $0.10 \le \text{PSI} \le 0.25$: Warning
-  - $\text{PSI} > 0.25$: **Critical Drift Detected**
-- **1-Click Drift Simulation**: Generates statistically shifted inputs (e.g. shifts income mean from $55k to $95k) to demonstrate drift alerts to professors in real-time.
-- **Automated Retraining Loop**: Retrains on updated data, generates a new version (e.g. `v2`), and allows zero-downtime promotion.
+  $$\text{PSI} = \sum_{b=1}^{B} \left( \text{Actual}_b\% - \text{Expected}_b\% \right) \times \ln\left( \frac{\text{Actual}_b\%}{\text{Expected}_b\%} \right)$$
+  - $\text{PSI} < 0.10$: **Normal / Stable**
+  - $0.10 \le \text{PSI} \le 0.25$: **Warning / Moderate Shift**
+  - $\text{PSI} > 0.25$: **Critical Data Drift Detected**
+- **1-Click Live Drift Simulator**: Perturbs incoming traffic distributions in real-time to trigger drift alerts.
+- **Automated Retraining Loop**: Retrains on shifted data distributions, versions the model to `v2`, and promotes it with zero downtime.
 - **Full Observability**: Prometheus scraping with Grafana dashboards provisioned out-of-the-box.
-- **Kubernetes Demonstrations**: Production manifests with Horizontal Pod Autoscaler (`HPA`).
+- **Kubernetes Production Manifests**: Includes Horizontal Pod Autoscaler (`HPA`) scaling between 2 and 10 pods on CPU/Memory thresholds.
 
 ---
 
-## 4. Technology Stack
+## 4. Web Application URLs
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 18, Vite, Tailwind CSS, Recharts, Lucide Icons, Axios |
-| **Backend** | Python 3.11/3.13, FastAPI, Uvicorn, Pydantic v2 |
-| **Machine Learning** | Scikit-Learn, Optuna, NumPy, Pandas, Joblib |
-| **MLOps & Tracking** | MLflow, Prometheus Client |
-| **Database** | PostgreSQL 15 (with transparent local SQLite fallback) |
-| **Observability** | Prometheus, Grafana |
-| **Containerization** | Docker, Docker Compose, Kubernetes |
-
----
-
-## 5. Folder Structure
-
-```
-cloud-mlops-platform/
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py               # FastAPI entrypoint, CORS, lifespan, routes
-│   │   ├── config.py             # App configurations, paths, thresholds
-│   │   ├── database.py           # SQLAlchemy models with PG/SQLite fallback
-│   │   │
-│   │   ├── api/                  # REST API routers
-│   │   │   ├── datasets.py       # Upload, profile, clean endpoints
-│   │   │   ├── training.py       # AutoML launch, leaderboard, retrain
-│   │   │   ├── models.py         # Registry, promote, rollback, download
-│   │   │   ├── prediction.py     # Live REST inference (/predict)
-│   │   │   └── monitoring.py     # Metrics, drift, simulation, health
-│   │   │
-│   │   ├── services/             # Core business logic
-│   │   │   ├── data_processor.py # Missing imputation, encoding, outliers
-│   │   │   ├── automl.py         # Optuna tuning across 5 ML models
-│   │   │   ├── model_registry.py # Versioning & stage promotion
-│   │   │   ├── predictor.py      # In-memory inference engine
-│   │   │   └── drift_detector.py # PSI drift calculator & simulator
-│   │   │
-│   │   ├── schemas/              # Pydantic validation schemas
-│   │   └── utils/                # Prometheus metrics & loggers
-│   │
-│   ├── datasets/                 # Uploaded & cleaned datasets
-│   ├── models/                   # Persisted .joblib model binaries
-│   ├── artifacts/                # Preprocessor pipelines
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/           # Sidebar, TopNav, DemoStepper
-│   │   ├── pages/                # 10 Dashboard views
-│   │   ├── services/api.js       # Axios API client
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── nginx.conf
-│   └── Dockerfile
-│
-├── monitoring/
-│   ├── prometheus.yml            # Scrape configuration
-│   └── grafana/
-│       └── provisioning/         # Auto-provisioned datasources & dashboards
-│
-├── sample-data/
-│   ├── sample_classification.csv # Customer Churn (1,000 records)
-│   └── iris.csv                  # Classic Multiclass dataset
-│
-├── k8s/                          # Kubernetes Manifests & HPA
-│   ├── backend-deployment.yaml
-│   ├── backend-service.yaml
-│   ├── frontend-deployment.yaml
-│   ├── frontend-service.yaml
-│   └── hpa.yaml
-│
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
+| Service | Local URL | Default Credentials | Purpose |
+|---|---|---|---|
+| **React Dashboard** | [http://localhost:3000](http://localhost:3000) | None | Complete MLOps user interface |
+| **FastAPI Backend** | [http://localhost:8000](http://localhost:8000) | None | REST API Gateway & Inference runtime |
+| **Swagger / OpenAPI** | [http://localhost:8000/docs](http://localhost:8000/docs) | None | Interactive API explorer |
+| **MLflow UI** | [http://localhost:5000](http://localhost:5000) | None | Experiment runs & model registry |
+| **Grafana Dashboard** | [http://localhost:3001](http://localhost:3001) | `admin` / `admin` | Real-time observability charts |
+| **Prometheus Metrics** | [http://localhost:9090](http://localhost:9090) | None | Time-series scraper & alerts |
 
 ---
 
-## 6. Prerequisites
+## 5. Prerequisites
 
-- **Option A (Docker)**: Docker Desktop with Docker Compose.
-- **Option B (Native Local Run)**:
+- **Option A (Docker)**: Docker Desktop running on your machine.
+- **Option B (Native Run)**:
   - Python 3.10+ (Python 3.11 or 3.13 recommended)
   - Node.js 18+ (Node 20 or 22 recommended) and npm
 
 ---
 
-## 7. Quick Start: Running with Docker Compose (Recommended)
+## 6. How to Run: Option 1 — Docker Compose (Full Stack)
 
-1. Clone or navigate to the project directory:
+This launches all 6 microservices (Frontend, Backend, PostgreSQL, MLflow, Prometheus, Grafana) with health checks:
+
+1. **Clone the repository**:
    ```bash
-   cd c:\ML\cloud_project
+   git clone https://github.com/aditya060414/Cloud_project.git
+   cd Cloud_project
    ```
 
-2. Copy environment file:
+2. **Create the environment file**:
    ```bash
+   # Windows PowerShell:
+   Copy-Item .env.example .env
+
+   # Linux / macOS:
    cp .env.example .env
    ```
 
-3. Build and launch all 6 microservices:
+3. **Build and launch containers**:
    ```bash
    docker compose up --build
    ```
+   *(To run in the background, append `-d`: `docker compose up --build -d`)*
 
-All containers will start up with health checks:
-- Frontend on `http://localhost:3000`
-- Backend API on `http://localhost:8000`
-- MLflow on `http://localhost:5000`
-- Prometheus on `http://localhost:9090`
-- Grafana on `http://localhost:3001`
+4. Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 
 ---
 
-## 8. Quick Start: Running Natively on Your Laptop (Without Docker)
+## 7. How to Run: Option 2 — Native Local Run (Without Docker)
 
-You can also run the backend and frontend directly on your host machine without starting Docker Desktop. The backend automatically detects that PostgreSQL is offline and transparently uses local SQLite `mlops.db`.
+You can run the backend and frontend directly on your computer without starting Docker Desktop. The backend automatically detects that PostgreSQL is offline and transparently uses local SQLite `backend/mlops.db`.
 
-### Start the Backend:
-```bash
-# In c:\ML\cloud_project:
-py -3.13 -m pip install -r backend/requirements.txt
-py -3.13 backend/app/main.py
+### Terminal 1: Start Backend (FastAPI)
+
+```powershell
+# Navigate to backend directory
+cd c:\ML\cloud_project\backend
+
+# Create and activate Python virtual environment
+py -3.13 -m venv --system-site-packages .venv
+.\.venv\Scripts\Activate.ps1
+
+# Install requirements (if not already installed)
+pip install -r requirements.txt
+
+# Start FastAPI server
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-*Backend runs on `http://localhost:8000` with Swagger on `http://localhost:8000/docs`.*
+> The API will be live at [http://localhost:8000](http://localhost:8000) and Swagger docs at [http://localhost:8000/docs](http://localhost:8000/docs).
 
-### Start the Frontend:
-```bash
-# In c:\ML\cloud_project\frontend:
+### Terminal 2: Start Frontend (React + Vite)
+
+```powershell
+# Navigate to frontend directory
+cd c:\ML\cloud_project\frontend
+
+# Install dependencies
 npm install
+
+# Start Vite development server
 npm run dev
 ```
-*Frontend runs on `http://localhost:3000` (or `http://localhost:5173`).*
+> The dashboard will be live at [http://localhost:3000](http://localhost:3000). Vite automatically proxies API requests (`/api`, `/predict`, `/health`, `/metrics`) to port 8000.
 
 ---
 
-## 9. Web Application URLs
+## 8. Important: Target Column Selection (Classification vs. Regression)
 
-| Service | URL | Purpose |
-|---|---|---|
-| **React Dashboard** | `http://localhost:3000` | Full MLOps SaaS user interface |
-| **FastAPI Backend** | `http://localhost:8000` | REST API gateway |
-| **Swagger / OpenAPI** | `http://localhost:8000/docs` | Interactive API documentation |
-| **MLflow UI** | `http://localhost:5000` | Experiment runs & model artifacts |
-| **Grafana Dashboard** | `http://localhost:3001` | Pre-built real-time monitoring charts |
-| **Prometheus Metrics** | `http://localhost:9090` | Raw time-series scrape metrics |
+The platform's AutoML algorithms are **Classifiers** (Random Forest, Gradient Boosting, Logistic Regression, SVM, KNN). 
 
----
-
-## 10. Complete Step-by-Step Viva Demo Workflow
-
-Follow these 14 steps during your viva or project presentation:
-
-### Step 1: Upload Dataset
-- Open the dashboard at `http://localhost:3000`.
-- Navigate to **Dataset Upload**.
-- Click **"Load Customer Churn (1000 rows)"** for instant 1-click loading, or upload your own CSV.
-
-### Step 2: Select Target Column
-- Verify the target column is set to `churn`.
-
-### Step 3: Analyze Dataset
-- Review the total rows (1,004), column count (9), missing records (13), and duplicates (4).
-- Inspect the first 5 rows in the **Preview Table**.
-
-### Step 4: Clean Dataset
-- Navigate to **Data Processing**.
-- Review the automated cleaning operations: Median Imputation, Mode Imputation, Duplicate Removal, IQR Outlier Clipping.
-- Click **"Run Data Processing"**.
-- Show the **Before vs. After Cleaning** comparison card:
-  - Rows: `1,004` → `1,000`
-  - Missing: `13` → `0`
-  - Duplicates: `4` → `0`
-
-### Step 5: Start AutoML Training
-- Navigate to **AutoML Training**.
-- Optimization metric: `F1 Score`.
-- Candidate models: All 5 selected.
-- Click **"Start AutoML Training"**.
-- Watch the live execution console stream the Optuna hyperparameter optimization steps in real-time.
-
-### Step 6 & 7: Model Leaderboard & Best Selection
-- Navigate to **Model Leaderboard**.
-- Show the **Metrics Comparison Bar Chart** (Accuracy, F1, Precision, Recall).
-- Show the auto-selected **Champion Model** with the highest F1 score (e.g., Random Forest or Logistic Regression with ~88-95%).
-- Click **"View Params"** to show optimal hyperparameters found by Optuna.
-
-### Step 8 & 9: Model Registry & Deployment
-- Navigate to **Model Registry**.
-- Show version `v1` tagged with status `PRODUCTION`.
-- Explain how stage promotion and instant rollbacks work.
-
-### Step 10: Live Prediction Playground
-- Navigate to **Prediction Playground**.
-- Click **"Preset: Normal Customer"** → Click **"Try Prediction"** → Returns class `0` (Retained) with ~90% confidence.
-- Click **"Preset: High-Risk Churn"** → Click **"Try Prediction"** → Returns class `1` (Churn) with ~85% confidence and sub-5ms latency.
-
-### Step 11: View Monitoring
-- Navigate to **Monitoring & Metrics**.
-- Show prediction throughput volume chart, average latency, and Prometheus audit trail.
-
-### Step 12 & 13: Simulate Data Drift & Trigger Alert
-- Navigate to **Drift Detection**.
-- The initial status is **✓ No Drift Detected (PSI < 0.10)**.
-- Click the prominent **"⚡ Simulate Data Drift (Demo)"** button!
-- The system generates statistically shifted incoming traffic (e.g. shifts income mean from $55k to $95k).
-- Watch the UI instantly change from green to **🚨 DATA DRIFT DETECTED IN PRODUCTION (PSI > 0.25)**!
-- Show the **Feature Distribution Histogram** illustrating how baseline (purple) and current (pink) distributions diverged.
-
-### Step 14: Automated Retraining Loop
-- An alert banner displays: **"Model retraining recommended."**
-- Click **"Start Retraining Pipeline"**.
-- AutoML automatically executes on the new distribution, registers model `v2`, updates the production runtime, and restores system health!
+When uploading custom CSV datasets:
+- **Recommended**: Select a **categorical or discrete column** as the target:
+  - *Customer Churn dataset*: `churn` (0 or 1) $\rightarrow$ **Trains in 2.8s** with >70% accuracy!
+  - *Iris dataset*: `species` (3 classes: Setosa, Versicolor, Virginica)
+  - *Cars dataset*: `fuel` (4 classes: Diesel, Petrol, CNG, LPG) or `owner` (5 classes)
+- **Avoid continuous numerical prices/quantities**: If you pick a continuous column like `selling_price` (which has 677 unique price values), classifiers will attempt to compute 677 separate classes, resulting in very long training times and low accuracy.
 
 ---
 
-## 11. API Endpoints Reference
+## 9. Complete Step-by-Step Viva Demo Workflow
+
+Follow these 14 steps during a viva, project presentation, or demonstration:
+
+1. **Upload Dataset**: Navigate to **Dataset Upload**. Click **"Load Customer Churn (1000 rows)"** for 1-click loading, or upload your own CSV.
+2. **Select Target Column**: Verify the target column is set to `churn` (or another categorical column).
+3. **Analyze Dataset**: Review total rows (1,004), column count (9), missing records (13), and duplicate rows (4).
+4. **Clean Dataset**: Navigate to **Data Processing**. Review the automated cleaning operations (Median Imputation, Mode Imputation, Duplicate Removal, IQR Outlier Clipping). Click **"Run Data Processing"** to show before-and-after results:
+   - Rows: `1,004` $\rightarrow$ `1,000`
+   - Missing: `13` $\rightarrow$ `0`
+   - Duplicates: `4` $\rightarrow$ `0`
+5. **Start AutoML Training**: Navigate to **AutoML Training**. Select optimization metric (`F1 Score`), keep candidate algorithms selected, and click **"Start AutoML Training"**. Watch real-time Optuna hyperparameter optimization steps in the console.
+6. **Model Leaderboard**: Navigate to **Model Leaderboard**. Inspect the comparative metrics bar chart (Accuracy, F1, Precision, Recall).
+7. **Best Model Selection**: Review the auto-selected **Champion Model** with optimal hyperparameters tuned by Optuna.
+8. **Model Registry**: Navigate to **Model Registry**. View version `v1` tagged with status `PRODUCTION`.
+9. **Explain Model Governance**: Explain lifecycle stages (`STAGING`, `PRODUCTION`, `ARCHIVED`), 1-click promotion, and instant zero-downtime rollback.
+10. **Live Prediction Playground**: Navigate to **Prediction Playground**:
+    - Click **"Preset: Normal Customer"** $\rightarrow$ Click **"Try Prediction"** $\rightarrow$ Returns class `0` (Retained) with ~90% confidence and sub-5ms latency.
+    - Click **"Preset: High-Risk Churn"** $\rightarrow$ Click **"Try Prediction"** $\rightarrow$ Returns class `1` (Churn) with sub-5ms latency.
+11. **View Monitoring**: Navigate to **Monitoring & Metrics**. Review prediction request throughput, average latency distributions, and Prometheus audit trail.
+12. **Simulate Data Drift**: Navigate to **Drift Detection**. Status initially shows **✓ No Drift Detected (PSI < 0.10)**. Click **"⚡ Simulate Data Drift (Demo)"**!
+13. **Data Drift Alert**: The system shifts feature distributions, and the UI immediately turns red: **🚨 CRITICAL DATA DRIFT DETECTED IN PRODUCTION (PSI > 0.25)** with feature distribution comparison charts.
+14. **Automated Retraining Loop**: An alert banner displays: *"Model retraining recommended."* Click **"Start Retraining Pipeline"**. AutoML retrains on the new distribution, registers model `v2`, updates the production runtime, and restores system health!
+
+---
+
+## 10. API Endpoints Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Health check for Docker/Kubernetes |
+| `GET` | `/health` | Health check probe for Docker and Kubernetes |
 | `GET` | `/metrics` | Prometheus metrics scrape format |
 | `POST` | `/api/datasets/upload` | Upload and profile CSV dataset |
 | `GET` | `/api/datasets` | List all registered datasets |
-| `POST` | `/api/datasets/{id}/process` | Clean and prepare dataset |
-| `POST` | `/api/datasets/load-sample/{name}` | Load sample dataset (churn, iris) |
+| `POST` | `/api/datasets/{id}/process` | Clean and prepare dataset (IQR, median, mode) |
+| `POST` | `/api/datasets/load-sample/{name}` | Load sample dataset (`churn`, `iris`) |
 | `POST` | `/api/training/start` | Launch AutoML hyperparameter study |
 | `GET` | `/api/training` | List AutoML training jobs and leaderboards |
-| `POST` | `/api/training/retrain` | Automated retraining trigger on drift |
+| `POST` | `/api/training/retrain` | Automated retraining trigger on drift alert |
 | `GET` | `/api/models` | List all versioned models in registry |
 | `GET` | `/api/models/active` | Get active PRODUCTION model schema |
 | `POST` | `/api/models/{id}/promote` | Promote model version to Production |
 | `POST` | `/api/models/{id}/rollback` | Rollback production to previous model |
-| `POST` | `/predict` | In-memory real-time model inference |
+| `POST` | `/predict` | Low-latency in-memory inference endpoint |
 | `GET` | `/api/monitoring` | Get observability statistics and history |
 | `GET` | `/api/monitoring/drift` | Get current PSI drift report |
 | `POST` | `/api/monitoring/simulate-drift` | Synthesize feature distribution shift |
 
 ---
 
-## 12. Kubernetes Deployment Demonstration
+## 11. Kubernetes Deployment & Autoscaling
 
-To demonstrate Kubernetes scalability to your professor:
+To demonstrate cloud-native scalability to your examiners:
 
 1. Apply deployments and services:
    ```bash
@@ -369,26 +307,43 @@ To demonstrate Kubernetes scalability to your professor:
 
 ---
 
-## 13. Troubleshooting
+## 12. Troubleshooting Guide
 
-1. **Port Already in Use**:
-   If port 8000, 3000, or 5432 is already occupied, check and terminate stale processes:
-   ```bash
-   # Windows PowerShell:
-   Get-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess | Stop-Process
-   ```
-2. **PostgreSQL Container Offline**:
-   No worries! The backend includes automatic SQLite fallback (`backend/mlops.db`). You can run natively without Postgres running.
-3. **MLflow Connection Warning**:
-   If MLflow container is not running, the backend persists experiments and artifacts locally to `backend/artifacts/` without crashing.
+1. **`WinError 10054` / Pip Connection Closed**:
+   - Occurs when PyPI connection drops during large package downloads.
+   - Fix: Use `--system-site-packages` when creating `.venv` to reuse pre-installed wheels, or install with extended timeout:
+     ```powershell
+     pip install --default-timeout=100 --retries 5 -r requirements.txt
+     ```
+
+2. **AutoML Training Times Out in Browser**:
+   - Occurs if you select a continuous numerical target (like `selling_price` with 600+ classes).
+   - Fix: Select a categorical column (`churn`, `fuel`, `owner`, `species`).
+
+3. **Port Already in Use (8000 or 3000)**:
+   - Identify and terminate the occupying process in PowerShell:
+     ```powershell
+     Get-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess | Stop-Process -Force
+     ```
+
+4. **PostgreSQL Offline**:
+   - The backend automatically falls back to local SQLite (`backend/mlops.db`). No manual configuration required.
 
 ---
 
-## 14. Viva Presentation Cheat Sheet
+## 13. Viva Presentation Cheat Sheet
 
 - **Why Population Stability Index (PSI) instead of just checking mean/variance?**
-  *PSI evaluates the whole binned probability density function. A mean might stay identical if data becomes bimodal, but PSI will accurately capture the divergence across quantiles.*
-- **Why in-memory inference instead of loading .joblib on every request?**
-  *Loading a 50MB model artifact from disk on every HTTP request takes 150-300ms. Pre-warming the pipeline in memory reduces latency to under 5ms, enabling high-throughput real-time APIs.*
+  *PSI evaluates the whole binned probability density function. A mean can remain identical if data becomes bimodal or spreads out, but PSI will accurately capture divergence across quantiles.*
+- **Why in-memory inference instead of loading `.joblib` on every request?**
+  *Loading a 50MB model artifact from disk on every HTTP request takes 150–300ms. Pre-warming the pipeline in memory reduces latency to under 5ms, enabling high-throughput real-time APIs.*
 - **What is Concept Drift vs. Data Drift?**
-  *Data Drift is a shift in $P(X)$ (feature distributions change). Concept Drift is a shift in $P(Y \mid X)$ (the relationship between features and target changes).*
+  *Data Drift is a shift in $P(X)$ (input feature distributions change). Concept Drift is a shift in $P(Y \mid X)$ (the statistical relationship between input features and target labels changes).*
+- **How does zero-downtime rollback work?**
+  *When rolling back, the database transaction marks the failed model as ARCHIVED and the previous model as PRODUCTION. The running inference server immediately reloads the active model pointer in memory without restarting the process.*
+
+---
+
+## 14. License
+
+Distributed under the MIT License. Developed for cloud Machine Learning Operations (MLOps) research and demonstration.
