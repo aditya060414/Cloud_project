@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlops-frontend-service
+  labels:
+    app: mlops-frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: mlops-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: http

@@ -1,0 +1,114 @@
+services:
+  # 1. PostgreSQL Database for MLOps Metadata
+  postgres:
+    image: postgres:15-alpine
+    container_name: mlops-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: mlops_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. MLflow Experiment Tracking & Model Registry Server
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: mlops-mlflow
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - BACKEND_STORE_URI=postgresql://postgres:postgrespassword@postgres:5432/mlops_db
+      - ARTIFACT_ROOT=/mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow/artifacts
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://postgres:postgrespassword@postgres:5432/mlops_db
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 3. FastAPI Core Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mlops-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/mlops_db
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./backend/datasets:/app/datasets
+      - ./backend/models:/app/models
+      - ./backend/artifacts:/app/artifacts
+      - ./sample-data:/sample-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 4. React Frontend Dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mlops-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  # 5. Prometheus Observability Metrics Collector
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: mlops-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    depends_on:
+      - backend
+
+  # 6. Grafana Real-Time Dashboard
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: mlops-grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  mlflow_data:
